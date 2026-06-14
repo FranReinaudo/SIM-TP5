@@ -115,10 +115,12 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
     <section className="panel">
       <h2>Vector de Estado</h2>
       <p className="hint">
-        Mostrando {filas.length} fila(s) desde la iteración {info.ventana.desde}. Hacé clic en una fila
-        para ver los objetos temporales (autos presentes en ese instante).
+        Mostrando {filas.length} fila(s) desde la iteración {info.ventana.desde}. Para ver más eventos
+        aumentá <b>"Cantidad de filas i"</b> (o cambiá <b>"Mostrar desde la fila j"</b>) en el panel
+        izquierdo. La tabla tiene scroll vertical y horizontal propio. Hacé clic en una fila para ver
+        los objetos temporales (autos presentes en ese instante).
       </p>
-      <div className="tabla-scroll">
+      <div className="tabla-scroll vector-wrap">
         <table className="vector">
           <Encabezado />
           <tbody>

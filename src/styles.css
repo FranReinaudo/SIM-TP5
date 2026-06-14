@@ -44,6 +44,10 @@ body {
   flex-shrink: 0;
   position: sticky;
   top: 16px;
+  /* La barra lateral tiene su PROPIO scroll: no se pisa con el de la pagina */
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 .contenido {
   flex: 1;
@@ -165,6 +169,12 @@ legend {
   border: 1px solid var(--borde);
   border-radius: 6px;
 }
+/* Tabla del vector de estado: scroll vertical Y horizontal propio,
+   con el encabezado fijo arriba para poder navegar muchas filas. */
+.tabla-scroll.vector-wrap {
+  max-height: 65vh;
+  overflow: auto;
+}
 table {
   border-collapse: collapse;
   width: 100%;
@@ -179,14 +189,22 @@ table {
 }
 .vector thead th {
   position: sticky;
-  top: 0;
   background: var(--azul);
   color: #fff;
+  z-index: 2;
 }
+/* Encabezado de DOS filas: la fila de grupos arriba y la de columnas debajo,
+   cada una con su offset para que no se superpongan al hacer scroll. */
 .vector thead .grupo th {
+  top: 0;
+  height: 26px;
   background: var(--azul-claro);
   font-size: 11px;
   letter-spacing: 0.5px;
+  z-index: 3;
+}
+.vector thead tr:not(.grupo) th {
+  top: 26px;
 }
 .vector tbody tr:nth-child(even) {
   background: #f6f8fa;
