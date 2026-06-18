@@ -8,7 +8,7 @@ export default function StatisticsPanel({ stats }) {
     { n: 2, label: '% Ocupación área de aspirado (AA)', val: num(stats.ocupacionAA) + ' %' },
     { n: 3, label: '% Ocupación lugares de lavado/secado (2 lugares)', val: num(stats.ocupacionLugares) + ' %' },
     { n: 4, label: '% Ocupación secadora', val: num(stats.ocupacionSecadora) + ' %' },
-    { n: 5, label: '% Ocupación operario PA (pone alfombras)', val: num(stats.ocupacionPA) + ' %' },
+    { n: 5, label: 'Tiempo medio de secado de la carrocería (con o sin secadora)', val: num(stats.secadoMedio) + ' min' },
     { n: 6, label: 'Tiempo medio de permanencia del auto en el sistema', val: num(stats.permanenciaMedia) + ' min' },
     { n: 7, label: 'Tiempo medio de espera en colas (por auto)', val: num(stats.esperaMediaColas) + ' min' },
     { n: 8, label: 'Cantidad máxima de autos en cola (ingreso QA)', val: stats.maxColaQA },

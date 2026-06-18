@@ -108,6 +108,8 @@ export function simular(params) {
     salidos = 0;
   let sumaEspera = 0,
     countEspera = 0;
+  let sumaSecado = 0,
+    countSecado = 0; // tiempo total de secado por carroceria (con o sin secadora)
   let maxColaQA = 0,
     maxColaAspirado = 0,
     maxColaLavado = 0,
@@ -334,6 +336,11 @@ export function simular(params) {
     auto.bodyReady = true;
     const teniaSecadora = l.estado === 'SecandoCon';
 
+    // estadistica: tiempo total que tardo en secarse (sea con o sin secadora,
+    // incluyendo el tramo que pudo haberse secado sola antes de tomar la secadora)
+    sumaSecado += auto.dryEnd - auto.washEnd;
+    countSecado++;
+
     // liberar el lugar de lavado (recien ahora, ya esta 100% seca)
     l.estado = 'Libre';
     l.auto = null;
@@ -440,6 +447,8 @@ export function simular(params) {
         return `Fin Secado (Lugar ${ev.slot + 1})`;
       case 'FIN_PA':
         return 'Fin Poner Alfombras';
+      case 'FIN':
+        return 'Fin de simulación';
       default:
         return ev.type;
     }
@@ -562,10 +571,14 @@ export function simular(params) {
   // ==========================================================================
   //  Bucle principal de eventos
   // ==========================================================================
+  let cortePorTiempo = false;
   while (true) {
     const ev = proximoEvento();
     if (!ev) break; // no hay mas eventos
-    if (ev.time > tiempoX) break; // se llego al tiempo X
+    if (ev.time > tiempoX) {
+      cortePorTiempo = true;
+      break;
+    } // se llego al tiempo X
     if (iter >= maxIteraciones) break; // se llego al maximo de iteraciones
 
     // acumular areas sobre el intervalo [lastClock, ev.time] con el estado previo
@@ -604,11 +617,25 @@ export function simular(params) {
     if (iter >= j && iter < j + i) {
       filas.push(construirFila(ev, true));
     }
-    // la ultima fila se recalcula siempre (sin objetos temporales)
-    ultimaFila = construirFila(ev, false);
 
     lastClock = clock;
   }
+
+  // ==========================================================================
+  //  Cierre en el instante X
+  // --------------------------------------------------------------------------
+  //  Si se corto por tiempo, avanzamos el reloj hasta X acumulando el area del
+  //  ultimo intervalo [lastClock, X] con el estado vigente. Asi las estadisticas
+  //  cubren toda la jornada [0, X] y la ultima fila corresponde al instante X.
+  //  (Si se corto por iteraciones, la ultima fila queda en el ultimo evento.)
+  // ==========================================================================
+  if (cortePorTiempo) {
+    acumular(tiempoX - lastClock);
+    clock = tiempoX;
+  }
+  // Ultima fila de simulacion, SIN objetos temporales (como pide el enunciado).
+  rndLog = {};
+  ultimaFila = construirFila({ type: 'FIN', time: clock }, false);
 
   // ==========================================================================
   //  Estadisticas finales (las 8 pedidas + extras de apoyo)
@@ -620,7 +647,8 @@ export function simular(params) {
     ocupacionAA: (busyAA / T) * 100,
     ocupacionLugares: (busyLug / (2 * T)) * 100,
     ocupacionSecadora: (busySec / T) * 100,
-    ocupacionPA: (busyPA / T) * 100,
+    // 5: tiempo medio de secado de la carroceria (con o sin secadora)
+    secadoMedio: countSecado ? sumaSecado / countSecado : 0,
     // 6: tiempo medio de permanencia en el sistema
     permanenciaMedia: salidos ? sumaPerm / salidos : 0,
     // 7: tiempo medio de espera en colas (por auto)
@@ -644,7 +672,7 @@ export function simular(params) {
     info: {
       iteraciones: iter,
       relojFinal: clock,
-      motivoParada: iter >= maxIteraciones ? 'iteraciones' : 'tiempo',
+      motivoParada: cortePorTiempo ? 'tiempo' : 'iteraciones',
       tablasTruncadas,
       ventana: { desde: j, cantidad: i },
     },
