@@ -23,15 +23,30 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
       <td>{f.n}</td>
       <td>{num(f.reloj)}</td>
       <td className="evento">{f.evento}</td>
-      {/* Numeros aleatorios y valores generados en el evento */}
+      {/* === POR EVENTO: cada evento con sus RND, tiempos y proximo evento === */}
+      {/* Llegada (exponencial) */}
       <td>{f.rnd.llegada ? rndFmt(f.rnd.llegada.rnd) : ''}</td>
       <td>{f.rnd.llegada ? num(f.rnd.llegada.valor) : ''}</td>
-      <td>{f.rnd.tipo ? `${rndFmt(f.rnd.tipo.rnd)} → ${f.rnd.tipo.tipo}` : ''}</td>
+      <td>{num(f.prox.llegada)}</td>
+      <td>{f.rnd.tipo ? rndFmt(f.rnd.tipo.rnd) : ''}</td>
+      <td>{f.rnd.tipo ? f.rnd.tipo.tipo : ''}</td>
+      {/* Fin Quitar Alfombras (tiempo fijo) */}
+      <td>{num(f.prox.finQA)}</td>
+      {/* Fin Aspirado (uniforme) */}
       <td>{f.rnd.aspirado ? rndFmt(f.rnd.aspirado.rnd) : ''}</td>
       <td>{f.rnd.aspirado ? num(f.rnd.aspirado.valor) : ''}</td>
+      <td>{num(f.prox.finAA)}</td>
+      {/* Fin Lavado (uniforme, 2 lugares) */}
       <td>{f.rnd.lavado ? rndFmt(f.rnd.lavado.rnd) : ''}</td>
       <td>{f.rnd.lavado ? num(f.rnd.lavado.valor) : ''}</td>
-      {/* Estados de recursos */}
+      <td>{num(f.prox.finLavado[0])}</td>
+      <td>{num(f.prox.finLavado[1])}</td>
+      {/* Fin Secado (ecuacion diferencial / Runge-Kutta, sin RND) */}
+      <td>{num(f.prox.finSecado[0])}</td>
+      <td>{num(f.prox.finSecado[1])}</td>
+      {/* Fin Poner Alfombras (tiempo fijo) */}
+      <td>{num(f.prox.finPA)}</td>
+      {/* === OBJETOS PERMANENTES: servidores y colas === */}
       <td>{f.estados.QA}</td>
       <td>{f.colas.qa}</td>
       <td>{f.estados.AA}</td>
@@ -42,16 +57,7 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
       <td>{f.estados.secadora}</td>
       <td>{f.estados.PA}</td>
       <td>{f.colas.pa}</td>
-      {/* Proximos eventos */}
-      <td>{num(f.prox.llegada)}</td>
-      <td>{num(f.prox.finQA)}</td>
-      <td>{num(f.prox.finAA)}</td>
-      <td>{num(f.prox.finLavado[0])}</td>
-      <td>{num(f.prox.finLavado[1])}</td>
-      <td>{num(f.prox.finSecado[0])}</td>
-      <td>{num(f.prox.finSecado[1])}</td>
-      <td>{num(f.prox.finPA)}</td>
-      {/* Acumuladores */}
+      {/* === ESTADISTICAS: acumuladores === */}
       <td>{num(f.acum.busyQA)}</td>
       <td>{num(f.acum.busyAA)}</td>
       <td>{num(f.acum.busyLug)}</td>
@@ -64,42 +70,70 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
 
   const Encabezado = () => (
     <thead>
+      {/* Fila 1: macro-secciones */}
       <tr className="grupo">
-        <th colSpan={3}>Evento</th>
-        <th colSpan={7}>Números aleatorios / valores</th>
-        <th colSpan={10}>Estado del sistema (recursos y colas)</th>
-        <th colSpan={8}>Próximos eventos (reloj)</th>
+        <th rowSpan={3}>n</th>
+        <th rowSpan={3}>Reloj</th>
+        <th rowSpan={3}>Evento</th>
+        <th colSpan={16}>Por evento — RND, tiempos y próximos eventos</th>
+        <th colSpan={10}>Objetos permanentes</th>
+        <th colSpan={7}>Estadísticas</th>
+      </tr>
+      {/* Fila 2: un grupo por evento / por objeto permanente */}
+      <tr className="subgrupo">
+        <th colSpan={5}>Llegada (exp)</th>
+        <th colSpan={1}>Fin QA (2′)</th>
+        <th colSpan={3}>Fin Aspirado U(3;5)</th>
+        <th colSpan={4}>Fin Lavado U(6;12)</th>
+        <th colSpan={2}>Fin Secado (RK)</th>
+        <th colSpan={1}>Fin PA (3′)</th>
+        <th colSpan={2}>QA</th>
+        <th colSpan={2}>AA</th>
+        <th colSpan={3}>Lavado</th>
+        <th colSpan={1}>Secadora</th>
+        <th colSpan={2}>PA</th>
         <th colSpan={7}>Acumuladores</th>
       </tr>
-      <tr>
-        <th>n</th>
-        <th>Reloj</th>
-        <th>Evento</th>
-        <th>RND lleg.</th>
+      {/* Fila 3: columnas */}
+      <tr className="columnas">
+        {/* Llegada */}
+        <th>RND</th>
         <th>T.entre lleg.</th>
+        <th>Próx. lleg.</th>
         <th>RND tipo</th>
-        <th>RND asp.</th>
+        <th>Tipo</th>
+        {/* Fin QA */}
+        <th>Próx. fin QA</th>
+        {/* Fin Aspirado */}
+        <th>RND</th>
         <th>T.asp.</th>
-        <th>RND lav.</th>
+        <th>Próx. fin AA</th>
+        {/* Fin Lavado */}
+        <th>RND</th>
         <th>T.lav.</th>
-        <th>QA</th>
-        <th>Cola QA</th>
-        <th>AA</th>
-        <th>Cola Asp.</th>
+        <th>Próx. lav.1</th>
+        <th>Próx. lav.2</th>
+        {/* Fin Secado */}
+        <th>Próx. sec.1</th>
+        <th>Próx. sec.2</th>
+        {/* Fin PA */}
+        <th>Próx. fin PA</th>
+        {/* QA */}
+        <th>Estado</th>
+        <th>Cola</th>
+        {/* AA */}
+        <th>Estado</th>
+        <th>Cola</th>
+        {/* Lavado */}
         <th>Lugar 1</th>
         <th>Lugar 2</th>
-        <th>Cola Lav.</th>
-        <th>Secadora</th>
-        <th>PA</th>
-        <th>Cola PA</th>
-        <th>Próx. lleg.</th>
-        <th>Fin QA</th>
-        <th>Fin AA</th>
-        <th>Fin Lav.1</th>
-        <th>Fin Lav.2</th>
-        <th>Fin Sec.1</th>
-        <th>Fin Sec.2</th>
-        <th>Fin PA</th>
+        <th>Cola</th>
+        {/* Secadora */}
+        <th>Estado</th>
+        {/* PA */}
+        <th>Estado</th>
+        <th>Cola</th>
+        {/* Acumuladores */}
         <th>∑ocup QA</th>
         <th>∑ocup AA</th>
         <th>∑ocup Lug.</th>

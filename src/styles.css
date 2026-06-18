@@ -193,8 +193,9 @@ table {
   color: #fff;
   z-index: 2;
 }
-/* Encabezado de DOS filas: la fila de grupos arriba y la de columnas debajo,
-   cada una con su offset para que no se superpongan al hacer scroll. */
+/* Encabezado de TRES filas: macro-secciones arriba, grupos por evento/objeto
+   en el medio y columnas debajo. Cada una con su offset para que queden fijas
+   y no se superpongan al hacer scroll. */
 .vector thead .grupo th {
   top: 0;
   height: 26px;
@@ -203,8 +204,15 @@ table {
   letter-spacing: 0.5px;
   z-index: 3;
 }
-.vector thead tr:not(.grupo) th {
+.vector thead .subgrupo th {
   top: 26px;
+  height: 24px;
+  background: var(--azul-claro);
+  font-size: 11px;
+  z-index: 3;
+}
+.vector thead .columnas th {
+  top: 50px;
 }
 .vector tbody tr:nth-child(even) {
   background: #f6f8fa;
