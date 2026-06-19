@@ -228,6 +228,12 @@ table {
   font-weight: 600;
   text-align: left;
 }
+/* Celda del proximo evento tomado como SIGUIENTE evento (minimo de los proximos) */
+.prox-sel {
+  color: #fff !important;
+  background: #d1242f !important;
+  font-weight: 700;
+}
 .libre {
   color: #8b949e;
 }

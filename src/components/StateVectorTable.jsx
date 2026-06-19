@@ -18,7 +18,12 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
     return <td className="ocupado">{txt}</td>;
   };
 
-  const Fila = ({ f, onClick, activa }) => (
+  const Fila = ({ f, onClick, activa }) => {
+    // Resalta en rojo la celda del proximo evento que fue tomado como SIGUIENTE.
+    const ps = f.proxSel;
+    const cls = (type, slot) =>
+      ps && ps.type === type && (slot === undefined || ps.slot === slot) ? 'prox-sel' : undefined;
+    return (
     <tr className={activa ? 'fila-activa' : ''} onClick={onClick}>
       <td>{f.n}</td>
       <td>{num(f.reloj)}</td>
@@ -27,25 +32,25 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
       {/* Llegada (exponencial) */}
       <td>{f.rnd.llegada ? rndFmt(f.rnd.llegada.rnd) : ''}</td>
       <td>{f.rnd.llegada ? num(f.rnd.llegada.valor) : ''}</td>
-      <td>{num(f.prox.llegada)}</td>
+      <td className={cls('LLEGADA')}>{num(f.prox.llegada)}</td>
       <td>{f.rnd.tipo ? rndFmt(f.rnd.tipo.rnd) : ''}</td>
       <td>{f.rnd.tipo ? f.rnd.tipo.tipo : ''}</td>
       {/* Fin Quitar Alfombras (tiempo fijo) */}
-      <td>{num(f.prox.finQA)}</td>
+      <td className={cls('FIN_QA')}>{num(f.prox.finQA)}</td>
       {/* Fin Aspirado (uniforme) */}
       <td>{f.rnd.aspirado ? rndFmt(f.rnd.aspirado.rnd) : ''}</td>
       <td>{f.rnd.aspirado ? num(f.rnd.aspirado.valor) : ''}</td>
-      <td>{num(f.prox.finAA)}</td>
+      <td className={cls('FIN_AA')}>{num(f.prox.finAA)}</td>
       {/* Fin Lavado (uniforme, 2 lugares) */}
       <td>{f.rnd.lavado ? rndFmt(f.rnd.lavado.rnd) : ''}</td>
       <td>{f.rnd.lavado ? num(f.rnd.lavado.valor) : ''}</td>
-      <td>{num(f.prox.finLavado[0])}</td>
-      <td>{num(f.prox.finLavado[1])}</td>
+      <td className={cls('FIN_LAVADO', 0)}>{num(f.prox.finLavado[0])}</td>
+      <td className={cls('FIN_LAVADO', 1)}>{num(f.prox.finLavado[1])}</td>
       {/* Fin Secado (ecuacion diferencial / Runge-Kutta, sin RND) */}
-      <td>{num(f.prox.finSecado[0])}</td>
-      <td>{num(f.prox.finSecado[1])}</td>
+      <td className={cls('FIN_SECADO', 0)}>{num(f.prox.finSecado[0])}</td>
+      <td className={cls('FIN_SECADO', 1)}>{num(f.prox.finSecado[1])}</td>
       {/* Fin Poner Alfombras (tiempo fijo) */}
-      <td>{num(f.prox.finPA)}</td>
+      <td className={cls('FIN_PA')}>{num(f.prox.finPA)}</td>
       {/* === OBJETOS PERMANENTES: servidores y colas === */}
       <td>{f.estados.QA}</td>
       <td>{f.colas.qa}</td>
@@ -66,7 +71,8 @@ export default function StateVectorTable({ filas, ultimaFila, info }) {
       <td>{num(f.acum.sumaPerm)}</td>
       <td>{f.acum.salidos}</td>
     </tr>
-  );
+    );
+  };
 
   const Encabezado = () => (
     <thead>

@@ -542,10 +542,14 @@ export function simular(params) {
   }
 
   function construirFila(ev, conObjetos) {
+    // Cual de los proximos eventos sera tomado como SIGUIENTE evento (el minimo).
+    // Se resalta en rojo en la tabla del vector de estado.
+    const sig = proximoEvento();
     return {
       n: iter,
       reloj: clock,
       evento: nombreEvento(ev),
+      proxSel: sig ? { type: sig.type, slot: sig.slot } : null,
       rnd: { ...rndLog },
       prox: {
         llegada: S.proxLlegada,
