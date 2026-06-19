@@ -24,7 +24,7 @@
 // ============================================================================
 
 import { crearRng, exponencial, uniforme, elegirTipo } from './rng.js';
-import { resolverSecado, avanzarSecado } from './rungeKutta.js';
+import { resolverSecado, humedadEnPaso, PASO_FINO } from './rungeKutta.js';
 
 const INF = Infinity;
 const TOPE_TABLAS_RK = 500; // limite de tablas RK guardadas (para no agotar memoria)
@@ -194,44 +194,65 @@ export function simular(params) {
   }
 
   // Cuando una carroceria que se secaba SOLA consigue la secadora.
+  //  Flujo (decision del grupo):
+  //   - tiempo secandose sola = reloj - inicio de secado, REDONDEADO al paso 0,1.
+  //   - se lee de la tabla "sin" la humedad restante H_r en ese instante.
+  //   - se trunca la fase "sin" hasta ese punto (lo realmente transcurrido).
+  //   - se arranca una fase "con" NUEVA: RK con la ecuacion con secadora,
+  //     humedad inicial H_r y t desde 0.
   function reasignarSecadora(idx) {
     const l = lugares[idx];
     const auto = l.auto;
-    // minutos enteros ya transcurridos secandose sola
-    const elapsed = Math.max(0, Math.floor(clock - l.secado.dryingStart));
-    // humedad actual: avanzamos esos minutos en modo "sin"
-    const av = avanzarSecado({
-      Hinicial: humedadInicial,
-      tInicial: 0,
-      modo: 'sin',
-      k: auto.k,
-      nPasos: elapsed,
-    });
-    // continuamos en modo "con" hasta secarse
-    const res = resolverSecado({ Hinicial: av.H, tInicial: elapsed, modo: 'con', k: auto.k });
+    const faseSin = l.secado.fases[0];
+    // indice del paso (0,1 min) ya transcurrido secandose sola
+    const idxSolo = Math.max(0, Math.round((clock - l.secado.dryingStart) / PASO_FINO));
+    // humedad restante leida de la tabla sin secadora (sin interpolar)
+    const Hr = humedadEnPaso(faseSin.tabla, idxSolo * PASO_FINO);
+    // truncar la fase sin a lo realmente transcurrido (hasta el cambio)
+    faseSin.tabla = faseSin.tabla.slice(0, idxSolo);
+
+    // fase con secadora: RK nuevo desde H0 = Hr, t = 0
+    const res = resolverSecado({ Hinicial: Hr, tInicial: 0, modo: 'con', k: auto.k });
     l.estado = 'SecandoCon';
     l.secado.modo = 'con';
     secadora.ocupada = true;
     secadora.lugar = idx;
     l.finSecado = clock + res.minutos;
-    // tabla combinada: fase sin + fase con
-    const pasosComb = [...av.pasos, ...res.pasos];
-    l.secado.tabla = pasosComb;
+    l.secado.fases.push({ modo: 'con', startClock: clock, tabla: res.pasos });
+
+    // tabla mostrada = fases concatenadas (sin truncada + con)
+    const pasosComb = l.secado.fases.flatMap((f) => f.tabla);
     if (l.secado.tablaRef) {
       l.secado.tablaRef.pasos = pasosComb;
-      l.secado.tablaRef.minutos = pasosComb.length;
+      // tiempo total alineado al paso: fase sin (idxSolo*0,1) + fase con
+      l.secado.tablaRef.minutos = Math.round((idxSolo * PASO_FINO + res.minutos) * 10) / 10;
       l.secado.tablaRef.cambioSecadora = true;
     }
   }
 
-  // Humedad actual mostrada de una carroceria que se esta secando.
+  // Humedad actual (interpolada) de una carroceria que se esta secando.
+  //  Ubica la FASE vigente (la ultima cuyo startClock <= reloj) e interpola su
+  //  tabla en el instante local del reloj. Asi la humedad mostrada en el vector
+  //  de estado cambia evento a evento (no salta de 100% a 0%) y respeta el
+  //  cambio sin -> con cuando el auto toma la secadora.
   function humedadActual(l) {
-    if (!l.secado || !l.secado.tabla) return null;
-    const e = Math.max(0, Math.floor(clock - l.secado.dryingStart));
-    const paso = l.secado.tabla.find((s) => s.t === e);
-    if (paso) return paso.H;
-    const ult = l.secado.tabla[l.secado.tabla.length - 1];
-    return ult ? Math.max(0, ult.Hnext) : 0;
+    if (!l.secado || !l.secado.fases || l.secado.fases.length === 0) return null;
+    let fase = l.secado.fases[0];
+    for (const f of l.secado.fases) {
+      if (f.startClock <= clock + 1e-9) fase = f;
+    }
+    const tabla = fase.tabla;
+    if (!tabla || tabla.length === 0) return null;
+    const eLocal = Math.max(0, clock - fase.startClock); // minutos dentro de la fase
+    const t0 = tabla[0].t;
+    const h = tabla.length > 1 ? tabla[1].t - tabla[0].t : PASO_FINO;
+    const pos = (eLocal - t0) / h;
+    const i = Math.floor(pos);
+    if (i < 0) return tabla[0].H;
+    if (i >= tabla.length) return 0; // ya paso el final -> seca
+    const frac = pos - i; // 0..1 dentro del paso
+    const fila = tabla[i];
+    return Math.max(0, fila.H + (fila.Hnext - fila.H) * frac);
   }
 
   // ==========================================================================
@@ -324,7 +345,13 @@ export function simular(params) {
     }
     l.finLavado = INF;
     const res = resolverSecado({ Hinicial: humedadInicial, tInicial: 0, modo, k: auto.k });
-    l.secado = { dryingStart: clock, modo, k: auto.k, tabla: res.pasos, tablaRef: null };
+    l.secado = {
+      dryingStart: clock,
+      modo,
+      k: auto.k,
+      fases: [{ modo, startClock: clock, tabla: res.pasos }],
+      tablaRef: null,
+    };
     l.finSecado = clock + res.minutos;
     l.secado.tablaRef = guardarTabla(auto, modo, res.pasos, res.minutos);
   }
@@ -435,6 +462,8 @@ export function simular(params) {
 
   function nombreEvento(ev) {
     switch (ev.type) {
+      case 'INIT':
+        return 'Inicialización';
       case 'LLEGADA':
         return `Llegada (Auto ${idAuto})`;
       case 'FIN_QA':
@@ -561,11 +590,18 @@ export function simular(params) {
   // ==========================================================================
   //  Inicializacion: primera llegada
   // ==========================================================================
+  let filaInicial = null;
   {
     const e = exponencial(rng, mediaLlegada);
     S.proxLlegada = e.valor;
     proxLlegadaRnd = e.rnd;
     proxLlegadaValor = e.valor;
+    // Fila de inicializacion (n=0, reloj=0): muestra el calculo del primer
+    // evento (la primera llegada) con su numero aleatorio. El sistema arranca
+    // vacio (todos los recursos libres y acumuladores en 0).
+    rndLog = { llegada: { rnd: e.rnd, valor: e.valor } };
+    filaInicial = construirFila({ type: 'INIT', time: 0 }, true);
+    rndLog = {};
   }
 
   // ==========================================================================
@@ -636,6 +672,9 @@ export function simular(params) {
   // Ultima fila de simulacion, SIN objetos temporales (como pide el enunciado).
   rndLog = {};
   ultimaFila = construirFila({ type: 'FIN', time: clock }, false);
+
+  // La fila de inicializacion (n=0, reloj=0) siempre encabeza el vector.
+  if (filaInicial) filas.unshift(filaInicial);
 
   // ==========================================================================
   //  Estadisticas finales (las 8 pedidas + extras de apoyo)

@@ -19,7 +19,9 @@ export default function RungeKuttaTables({ tablas, truncadas }) {
     <section className="panel">
       <h2>Tablas de Runge-Kutta ({tablas.length})</h2>
       <p className="hint">
-        Una tabla por cada secado. Paso h = 1 min. "con" = ecuación con secadora; "sin" = se seca sola.
+        Una tabla por cada secado, una fila por cada paso de integración (h = 0,1 min). Se usa h=0,1
+        para estabilizar la ecuación con secadora (con h=1 se desborda a valores negativos). "con" =
+        ecuación con secadora; "sin" = se seca sola.
         {truncadas && ' (se alcanzó el tope de tablas guardadas)'}
       </p>
       <div className="rk-lista">
@@ -29,7 +31,7 @@ export default function RungeKuttaTables({ tablas, truncadas }) {
             <div className="rk-item" key={idx}>
               <button className="rk-head" onClick={() => setAbierta(open ? null : idx)}>
                 {open ? '▼' : '►'} Auto {t.autoId} ({t.tipo}, k={t.k}) — empezó a secar en t={num(t.relojInicio)} min
-                — {t.minutos} min {t.modoInicial === 'con' ? '(con secadora)' : '(empezó solo)'}
+                — seca en {num(t.minutos, 1)} min {t.modoInicial === 'con' ? '(con secadora)' : '(empezó solo)'}
                 {t.cambioSecadora ? ' → tomó la secadora' : ''}
               </button>
               {open && (
@@ -51,7 +53,7 @@ export default function RungeKuttaTables({ tablas, truncadas }) {
                       {t.pasos.map((p, i2) => (
                         <tr key={i2} className={p.fase === 'con' ? 'fase-con' : 'fase-sin'}>
                           <td>{p.fase}</td>
-                          <td>{p.t}</td>
+                          <td>{num(p.t, 1)}</td>
                           <td>{num(p.H, 4)}</td>
                           <td>{num(p.k1, 4)}</td>
                           <td>{num(p.k2, 4)}</td>

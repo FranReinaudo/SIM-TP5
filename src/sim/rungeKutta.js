@@ -13,18 +13,27 @@
 //        cuando H <= UMBRAL_SECO (se muestra como 0,0%).
 //    k = 0,25 (pick-up) / 0,5 (mediano) / 0,75 (pequeno).
 //
-//  Unidad de integracion (paso h) = 1 minuto, como indica el enunciado.
+//  NOTA NUMERICA IMPORTANTE:
+//    La ecuacion CON secadora tiene el termino +2*H, que la vuelve
+//    INESTABLE. Integrada con un paso h=1 "se desborda" (de 51% salta a
+//    -321% en un minuto) y la carroceria queda "seca" siempre en 3 min por
+//    un artefacto numerico, no porque realmente alcance 0%.
+//
+//    Por eso integramos con un PASO de 0,1 min (PASO_FINO): asi la curva es
+//    estable y el instante real en que la humedad cruza 0 se calcula con
+//    precision (p. ej. ~2,28 min con secadora). La tabla se muestra paso a
+//    paso (una fila por cada 0,1 min de integracion).
 // ============================================================================
 
 export const UMBRAL_SECO = 0.05; // H por debajo de esto -> se considera 0,0% (seca)
-export const PASO_H = 1; // unidad de integracion = 1 minuto
+export const PASO_FINO = 0.1; // paso de integracion = 0,1 minuto (una fila por paso)
 
 // f con secadora
 export const fCon = (t, H) => -5 * t * t + 2 * H - 200;
 // f sin secadora (depende de k)
 export const fSin = (k) => (t, H) => -k * H;
 
-// Un paso de RK4. Devuelve las 4 pendientes y el H del siguiente minuto.
+// Un paso de RK4 con paso h. Devuelve las 4 pendientes y el H siguiente.
 export function pasoRK4(f, t, H, h) {
   const k1 = f(t, H);
   const k2 = f(t + h / 2, H + (h / 2) * k1);
@@ -34,38 +43,40 @@ export function pasoRK4(f, t, H, h) {
   return { k1, k2, k3, k4, Hnext };
 }
 
-// Integra el secado minuto a minuto HASTA que la carroceria queda seca.
-//  Devuelve la tabla de pasos (para mostrarla) y la cantidad de minutos.
-export function resolverSecado({ Hinicial, tInicial, modo, k, h = PASO_H, maxPasos = 300 }) {
+// Integra el secado paso a paso (cada paso = PASO_FINO min) HASTA que la
+// carroceria queda seca. Cada elemento de `pasos` es UN paso de RK4.
+//  `minutos` es el instante (fraccional) en que queda seca, desde tInicial.
+export function resolverSecado({ Hinicial, tInicial, modo, k, h = PASO_FINO, maxMin = 600 }) {
   const f = modo === 'con' ? fCon : fSin(k);
   let t = tInicial;
   let H = Hinicial;
   const pasos = [];
+  const maxPasos = Math.round(maxMin / h);
   let count = 0;
   while (H > UMBRAL_SECO && count < maxPasos) {
     const p = pasoRK4(f, t, H, h);
-    pasos.push({ fase: modo, t, H, k1: p.k1, k2: p.k2, k3: p.k3, k4: p.k4, Hnext: p.Hnext });
+    pasos.push({ fase: modo, t, H, k1: p.k1, k2: p.k2, k3: p.k3, k4: p.k4, Hnext: Math.max(0, p.Hnext) });
     H = p.Hnext;
     t += h;
     count++;
+    if (H <= UMBRAL_SECO) break; // quedo seca al terminar este paso
   }
-  return { pasos, minutos: count, Hfinal: H };
+  // Tiempo de secado ALINEADO al paso: cantidad de pasos * h (un solo decimal).
+  // No interpolamos el cruce dentro del paso; la carroceria se considera seca
+  // al completarse el paso en que la humedad cae bajo el umbral.
+  const minutos = Math.round(count * h * 10) / 10;
+  return { pasos, minutos, Hfinal: Math.max(0, H) };
 }
 
-// Integra el secado un numero FIJO de minutos (no hasta secarse).
-//  Se usa cuando una carroceria que se secaba sola consigue la secadora:
-//  primero reconstruimos su humedad actual avanzando los minutos ya
-//  transcurridos en modo "sin", y luego continuamos en modo "con".
-export function avanzarSecado({ Hinicial, tInicial, modo, k, nPasos, h = PASO_H }) {
-  const f = modo === 'con' ? fCon : fSin(k);
-  let t = tInicial;
-  let H = Hinicial;
-  const pasos = [];
-  for (let s = 0; s < nPasos; s++) {
-    const p = pasoRK4(f, t, H, h);
-    pasos.push({ fase: modo, t, H, k1: p.k1, k2: p.k2, k3: p.k3, k4: p.k4, Hnext: p.Hnext });
-    H = p.Hnext;
-    t += h;
-  }
-  return { pasos, H, t };
+// Lee la humedad de una tabla de pasos en un tiempo local dado, redondeando al
+// paso de integracion (sin interpolar). Se usa para obtener la humedad
+// restante H_r de una carroceria que se secaba sola, en el instante en que
+// toma la secadora.
+export function humedadEnPaso(pasos, tLocal, h = PASO_FINO) {
+  if (!pasos || pasos.length === 0) return null;
+  const t0 = pasos[0].t;
+  let idx = Math.round((tLocal - t0) / h);
+  if (idx < 0) idx = 0;
+  if (idx >= pasos.length) return Math.max(0, pasos[pasos.length - 1].Hnext);
+  return pasos[idx].H;
 }

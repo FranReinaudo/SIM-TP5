@@ -7,8 +7,8 @@ export function num(v, dec = 2) {
   return v.toFixed(dec);
 }
 
-// Numero aleatorio (4 decimales).
+// Numero aleatorio truncado a 2 decimales.
 export function rndFmt(v) {
   if (v === undefined || v === null) return '—';
-  return v.toFixed(4);
+  return v.toFixed(2);
 }

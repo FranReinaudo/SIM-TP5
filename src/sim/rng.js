@@ -7,12 +7,20 @@
 //   aleatorio que se uso para determinar su valor."
 // ============================================================================
 
-// Crea un generador de numeros pseudoaleatorios.
+// Trunca un numero de [0,1) a DOS decimales (no redondea): 0,9797 -> 0,97.
+//  El mismo numero truncado es el que se usa para calcular el evento y el que
+//  se muestra en el vector de estado.
+function truncar2(x) {
+  return Math.floor(x * 100) / 100;
+}
+
+// Crea un generador de numeros pseudoaleatorios. Cada numero se entrega ya
+// TRUNCADO a dos decimales.
 //  - Si se pasa una semilla, usa mulberry32 (resultados REPRODUCIBLES).
 //  - Si no, usa Math.random (resultados distintos en cada corrida).
 export function crearRng(semilla) {
   if (semilla === undefined || semilla === null || semilla === '') {
-    return () => Math.random();
+    return () => truncar2(Math.random());
   }
   let s = (Number(semilla) >>> 0) || 1;
   return function () {
@@ -20,7 +28,7 @@ export function crearRng(semilla) {
     s = (s + 0x6d2b79f5) | 0;
     let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return truncar2(((t ^ (t >>> 14)) >>> 0) / 4294967296);
   };
 }
 
