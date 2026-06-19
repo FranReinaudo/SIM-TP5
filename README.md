@@ -60,8 +60,9 @@ La carrocería está "seca" cuando `H ≤ 0,05` (se muestra como 0,0%).
 
 1. **QA y PA son operarios distintos** (1 cada uno).
 2. **Humedad inicial = 100%** (modificable).
-3. **8 estadísticas:** % ocupación de QA, AA, lugares de lavado, secadora y PA;
-   tiempo medio de permanencia; tiempo medio de espera en colas; máxima cola de ingreso.
+3. **8 estadísticas:** % ocupación de QA, AA, lugares de lavado y secadora;
+   tiempo medio de secado de la carrocería; tiempo medio de permanencia;
+   tiempo medio de espera en colas; máxima cola de ingreso.
 4. **Secadora FIFO:** si se libera, la toma la carrocería que más tiempo lleva
    secándose sola y acelera su secado (pasa a la ecuación con secadora).
 5. `t` en la ecuación con secadora es el tiempo local de secado (arranca en 0) y no
